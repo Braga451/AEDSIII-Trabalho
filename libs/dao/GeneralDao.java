@@ -1,13 +1,23 @@
 package libs.dao;
 
+import libs.dao.annotations.ForeignKey;
+import libs.dao.annotations.MultivaluedField;
+import libs.dao.annotations.PrimaryKey;
 import libs.sgbd.SGBD;
 import libs.sgbd.types.SGBDTypes;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+
+import libs.dao.annotations.DatabaseField;
+
+import javax.xml.crypto.Data;
 
 // TODO: Replace the tableName attribute logic to annotation logic
 
@@ -73,22 +83,50 @@ abstract public class GeneralDao {
         ArrayList<String> tableFieldsOrder = sgbd.getSchemasOrder().get(this.tableName);
         HashMap<String, SGBDTypes> tableSchema = sgbd.getSchemas().get(this.tableName);
 
-        for (String field : tableFieldsOrder) {
-            SGBDTypes fieldType = tableSchema.get(field);
+        int id = sgbd.getLastIndex(tableName);
 
+        for (String field : tableFieldsOrder) {
             Field f = this.getClass().getDeclaredField(field);
             f.setAccessible(true);
 
-            Object fieldValue = f.get(this);
+            if (!f.isAnnotationPresent(DatabaseField.class)) {
+                continue;
+            }
 
-            if (field.equals("id")) {
-                fieldValue = sgbd.getLastIndex(this.tableName);
+            Object fieldValue = f.get(this);
+            if (f.isAnnotationPresent(MultivaluedField.class)) {
+                handleMultivaluedFieldInsert((List<GeneralDao>) fieldValue);
+                continue;
+            }
+
+            SGBDTypes fieldType = tableSchema.get(field);
+
+            if (f.isAnnotationPresent(PrimaryKey.class) && f.getAnnotation(PrimaryKey.class).autoIncrement()) {
+                fieldValue = id;
+                f.set(this, id);
             }
 
             switch (fieldType) {
                 case STRING -> writeString(data, (String) fieldValue);
                 case INTEGER -> writeInteger(data, (Integer) fieldValue);
             }
+        }
+    }
+
+
+    // TODO: Fix this solution to be more general. This presuppose that the foregein keyReferece will be always named as "id"
+    private void handleMultivaluedFieldInsert(List<GeneralDao> generalDaoList) throws IllegalAccessException {
+        for (GeneralDao generalDao : generalDaoList) {
+            for (Field f : generalDao.getClass().getDeclaredFields()) {
+                if (f.isAnnotationPresent(ForeignKey.class) &&
+                        f.getDeclaredAnnotation(ForeignKey.class).tableReference().equals(tableName) &&
+                        f.getDeclaredAnnotation(ForeignKey.class).keyReference().equals("id")) {
+                    f.setAccessible(true);
+                    f.set(generalDao, returnPrimaryKey());
+                }
+            }
+
+            generalDao.insert();
         }
     }
 
@@ -106,4 +144,7 @@ abstract public class GeneralDao {
         binaryRegister.writeInt(toWrite);
     }
 
+    protected abstract Integer returnPrimaryKey();
+
+    protected abstract void setPrimaryKey(Integer primaryKey);
 }
