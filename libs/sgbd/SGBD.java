@@ -137,7 +137,7 @@ public class SGBD {
 
                     fileOutputStream.close();
                 } else {
-                    System.out.println("[+] Table " + s + "already exists");
+                    System.out.println("[+] Table " + s + " already exists");
                 }
             }
             catch (IOException ioException) {

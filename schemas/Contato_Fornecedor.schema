@@ -1,0 +1,3 @@
+INTEGER,id_contato
+STRING,contato
+INTEGER,id_fornecedor
