@@ -10,6 +10,7 @@ public class CategoriaDAO extends GeneralDao {
     public CategoriaDAO(String nome, String  descricao) {
         this.nome = nome;
         this.descricao = descricao;
+        this.tableName = "Categoria";
     }
 
     public CategoriaModel insertCategoria() {
