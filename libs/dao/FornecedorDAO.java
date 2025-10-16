@@ -20,7 +20,6 @@ public class FornecedorDAO extends GeneralDao {
     @DatabaseField(fieldName = "nome", notNull = true)
     private final String nome;
 
-    @DatabaseField(fieldName = "contato_fornecedor")
     @MultivaluedField(tableName = "Contato_Fornecedor")
     private final ArrayList<ContatoFornecedorDAO> contato_fornecedor;
 

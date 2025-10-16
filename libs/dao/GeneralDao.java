@@ -1,23 +1,14 @@
 package libs.dao;
 
-import libs.dao.annotations.ForeignKey;
-import libs.dao.annotations.MultivaluedField;
-import libs.dao.annotations.PrimaryKey;
+import libs.dao.annotations.*;
 import libs.sgbd.SGBD;
 import libs.sgbd.types.SGBDTypes;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
-import libs.dao.annotations.DatabaseField;
-
-import javax.xml.crypto.Data;
 
 // TODO: Replace the tableName attribute logic to annotation logic
 
@@ -89,19 +80,26 @@ abstract public class GeneralDao {
             Field f = this.getClass().getDeclaredField(field);
             f.setAccessible(true);
 
-            if (!f.isAnnotationPresent(DatabaseField.class)) {
-                continue;
-            }
-
             Object fieldValue = f.get(this);
             if (f.isAnnotationPresent(MultivaluedField.class)) {
                 handleMultivaluedFieldInsert((List<GeneralDao>) fieldValue);
                 continue;
             }
 
+            if (f.isAnnotationPresent(ForeignKey.class)) {
+                // TODO: Validate the foreign key
+            }
+
+            if (!f.isAnnotationPresent(DatabaseField.class)) {
+                continue;
+            }
+
             SGBDTypes fieldType = tableSchema.get(field);
 
-            if (f.isAnnotationPresent(PrimaryKey.class) && f.getAnnotation(PrimaryKey.class).autoIncrement()) {
+            if (f.isAnnotationPresent(PrimaryKey.class) &&
+                    f.getAnnotation(PrimaryKey.class).autoIncrement() &&
+                    Objects.isNull(fieldValue)
+            ) {
                 fieldValue = id;
                 f.set(this, id);
             }

@@ -1,3 +1,2 @@
 INTEGER,id
 STRING,nome
-MULTIVALUED,contato_fornecedor

@@ -1,2 +1,3 @@
+INTEGER,id
 INTEGER,id_item
 INTEGER,id_fornecedor
