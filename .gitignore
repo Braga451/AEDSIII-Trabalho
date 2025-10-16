@@ -1,4 +1,6 @@
-.idea
-out/
+# Arquivos compilados do Java
+bin/
 *.class
-databases/
+
+# Pasta de dados gerada pela aplicação
+data/
