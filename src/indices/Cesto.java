@@ -8,6 +8,7 @@ import java.io.IOException;
 
 public class Cesto {
 
+    // Cesto/Bucket
     // DECISÃO DE PROJETO: Quantos pares [chave, endereço] um cesto pode conter.
     // Um valor pequeno é bom para forçar splits e testar o algoritmo.
     public static final int TAMANHO_CESTO = 4;
@@ -135,4 +136,5 @@ public class Cesto {
             this.enderecos[i] = dis.readLong();
         }
     }
+
 }
