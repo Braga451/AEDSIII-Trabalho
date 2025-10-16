@@ -1,5 +1,0 @@
-INTEGER,id
-STRING,nome
-STRING,descricao
-INTEGER,quantidade_estoque
-INTEGER,id_categoria
