@@ -1,4 +1,5 @@
-# AEDS3TP - Aplicativo de Gerenciamento de Dados em Memória Secundária
+# AEDS3TP
+# Aplicativo de Gerenciamento de Dados em Memória Secundária
 
 ### Fase 2 - Índices B+ e Hash Extensível
 
@@ -9,27 +10,23 @@ Este projeto consiste no desenvolvimento de um aplicativo de gerenciamento de es
   * Arthur Braga de Campos Tinoco
   * Rafael Lima Mendonça Garcia
 
-## Visão Geral do Projeto
+## Funcionalidades Implementadas (Fase 2)
 
-O principal desafio deste trabalho é construir um sistema de banco de dados do zero, controlando o acesso aos dados em baixo nível. O sistema gerencia três entidades principais (Categorias, Fornecedores e Itens de Estoque) e seus relacionamentos, garantindo que todas as informações sejam persistidas em disco e que as buscas sejam eficientes através de índices customizados.
+  * **CRUD completo** para as entidades Categoria, Fornecedor e Item de Estoque.
+  * **Persistência direta em arquivos binários** com cabeçalho de controle e exclusão lógica por lápide.
+  * **Índice primário com Hash Extensível** para todas as tabelas, garantindo busca por ID com alta performance.
+  * **Relacionamento 1:N (Categoria -\> Item de Estoque)** implementado com um índice secundário de **Árvore B+**, permitindo a listagem eficiente de todos os itens de uma determinada categoria.
 
-## Estrutura e Arquitetura do Projeto
+## Estrutura do Projeto
 
-O sistema segue a arquitetura **MVC + DAO (Model-View-Controller + Data Access Object)**, com os pacotes organizados por responsabilidade para garantir um código limpo e de fácil manutenção.
+O sistema segue a arquitetura **MVC + DAO**, com os pacotes organizados da seguinte forma:
 
-  * `src/app`: Ponto de entrada da aplicação. Contém a classe `Main` que inicializa e executa o sistema.
-  * `src/view`: Camada de apresentação. A classe `MainView` é responsável por toda a interação com o usuário via console, exibindo menus e coletando entradas.
-  * `src/model`: Classes de domínio (entidades). Representam a estrutura dos dados do sistema, como `Categoria`, `Fornecedor` e `ItemEstoque`.
-  * `src/dao`: Camada de acesso a dados. As classes DAO são o coração da persistência, contendo a lógica para ler e escrever nos arquivos binários e para interagir com os índices.
-  * `src/indices`: Implementações das estruturas de dados avançadas. Contém as classes `HashExtensivel` e `ArvoreBPlus`, que são utilizadas pelos DAOs para otimizar as buscas.
-  * `data/`: Diretório na raiz do projeto onde todos os arquivos de dados (`.db`) e de índices são gerados e armazenados.
-
-## Decisões Chave de Projeto
-
-  * **Persistência Binária com `RandomAccessFile`:** A escolha por arquivos de acesso aleatório permite a leitura e escrita em posições específicas do arquivo, fundamental para a implementação de exclusão lógica e para o acesso direto aos registros via índices.
-  * **Exclusão Lógica (Lápide):** Em vez de reescrever o arquivo inteiro a cada exclusão, apenas um byte (a "lápide") é modificado no registro. Isso torna a operação de exclusão extremamente rápida e eficiente.
-  * **Índice Primário com Hash Extensível:** Para buscas diretas por ID (chave primária), o Hash Extensível foi escolhido por sua performance média de O(1), garantindo que a busca de um registro específico seja praticamente instantânea, independentemente do tamanho do arquivo.
-  * **Índice Secundário com Árvore B+:** Para implementar o relacionamento 1:N (listar todos os itens de uma categoria), a Árvore B+ é a estrutura ideal. Ela é otimizada para buscas em grupo e por faixa, permitindo encontrar todos os registros associados a uma chave estrangeira de forma muito mais eficiente que uma varredura sequencial.
+  * `src/model`: Classes de domínio (entidades).
+  * `src/dao`: Classes de acesso a dados, que manipulam os arquivos binários e os índices.
+  * `src/indices`: Implementações das estruturas de dados (Hash Extensível e Árvore B+).
+  * `src/view`: Camada de apresentação (interface via console).
+  * `src/app`: Ponto de entrada da aplicação.
+  * `data/`: Diretório onde os arquivos de dados (`.db`) são gerados.
 
 ## Como Compilar e Executar
 
@@ -43,15 +40,16 @@ Todos os comandos devem ser executados a partir do **diretório raiz do projeto*
 
 #### Windows (Usando PowerShell ou Windows Terminal)
 
+O processo é feito em duas etapas para maior clareza.
+
 1.  Crie o diretório de saída para os arquivos compilados:
     ```powershell
     mkdir bin
     ```
 2.  Compile todos os arquivos `.java` recursivamente para dentro do diretório `bin`:
     ```powershell
-    javac -d bin @(Get-ChildItem -Recurse -Path src -Filter *.java | ForEach-Object { $_.FullName })
+    javac -d bin @(Get-ChildItem -Recourse -Path src -Filter *.java | ForEach-Object { $_.FullName })
     ```
-    *(Nota: Corrigido o erro de digitação de `-Recourse` para `-Recurse`)*
 
 #### Linux e macOS
 
@@ -66,6 +64,8 @@ Todos os comandos devem ser executados a partir do **diretório raiz do projeto*
 
 #### Windows (Usando CMD Clássico)
 
+Este método utiliza um arquivo auxiliar para listar os fontes.
+
 1.  Gere um arquivo `sources.txt` com a lista de todos os arquivos `.java`:
     ```cmd
     dir /s /b src\*.java > sources.txt
@@ -77,10 +77,12 @@ Todos os comandos devem ser executados a partir do **diretório raiz do projeto*
 
 ### Execução
 
-Após a compilação bem-sucedida, execute o programa com o seguinte comando (o mesmo para todos os sistemas):
+Após a compilação bem-sucedida, execute o programa com o seguinte comando (é o mesmo para todos os sistemas operacionais):
 
 ```bash
 java -cp bin app.Main
 ```
 
-O menu interativo do sistema será exibido no console, pronto para uso. Para testar a funcionalidade principal, recomenda-se criar algumas categorias e fornecedores, depois criar itens de estoque associados a eles e, por fim, usar a opção "Listar Itens por Categoria".
+  * O comando `-cp bin` (classpath) informa à JVM para procurar os arquivos `.class` compilados dentro do diretório `bin`.
+
+O menu interativo do sistema será exibido no console, pronto para uso.
