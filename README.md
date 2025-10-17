@@ -86,3 +86,7 @@ java -cp bin app.Main
   * O comando `-cp bin` (classpath) informa à JVM para procurar os arquivos `.class` compilados dentro do diretório `bin`.
 
 O menu interativo do sistema será exibido no console, pronto para uso.
+
+### PDF
+
+O PDF da fase 2 do trabalho está presente no diretório `docs`
