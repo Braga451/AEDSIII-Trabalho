@@ -1,63 +1,67 @@
-## Formulário de Projeto – Decisões Técnicas
+## Formulário de Projeto – Decisões Técnicas (Fase 3)
 
-### a) Qual a estrutura usada para representar os registros?
+### 1\. Qual foi o relacionamento N:N escolhido e quais tabelas ele conecta?
 
-A persistência dos dados foi implementada utilizando arquivos binários de acesso aleatório, através da classe `java.io.RandomAccessFile`. Cada arquivo de entidade (ex: `categorias.db`) possui um **cabeçalho** de 4 bytes que armazena o último ID utilizado, garantindo o controle sequencial dos identificadores.
+O relacionamento N:N escolhido foi entre as entidades **`Fornecedor`** e **`Categoria`**. Este relacionamento é implementado através de uma nova tabela associativa (intermediária) chamada **`FornecedorCategoria`**.
 
-Cada registro no arquivo segue a estrutura:
-`[ Lápide (1 byte) ] [ Tamanho do Registro (int - 4 bytes) ] [ Dados Serializados (N bytes) ]`
+Essa escolha foi feita por ser a mais lógica e limpa, permitindo que um fornecedor possa fornecer itens de múltiplas categorias (ex: "Distribuidora ABC" fornece Laticínios e Limpeza) e que uma categoria possa ser fornecida por múltiplos fornecedores (ex: "Laticínios" é fornecido pela "Distribuidora ABC" e pela "Laticínios da Serra"), sem alterar a estrutura 1:N já existente entre `ItemEstoque` e `Fornecedor`.
 
-* **Lápide:** Um marcador de 1 byte onde `' '` indica um registro ativo e `'*'` indica um registro logicamente excluído.
-* **Tamanho do Registro:** Um inteiro que armazena o tamanho exato dos dados serializados, permitindo pular registros de tamanho variável de forma eficiente durante a leitura.
+### 2\. Qual estrutura de índice foi utilizada (B+ ou Hash Extensível)? Justifique a escolha.
 
-### b) Como atributos multivalorados do tipo string foram tratados?
+Foi utilizada a **Árvore B+** (B+ Tree).
 
-O atributo multivalorado de telefones na entidade `Fornecedor` foi tratado convertendo a lista de Strings (`List<String>`) em uma única String concatenada, utilizando um caractere delimitador ``;``.
+**Justificativa:** A principal função de um índice em um relacionamento N:N é responder a perguntas de *agrupamento* (1-para-N), como "Quais são *todas* as categorias do Fornecedor X?" ou "Quais são *todos* os fornecedores da Categoria Y?".
 
-* No método `toByteArray`, a função `String.join(";")` é usada para criar a string única antes da gravação.
-* No método `fromByteArray`, o método `split(";")` é utilizado para reconstruir a `ArrayList` de telefones a partir da string lida do arquivo.
+  * O **Hash Extensível** é otimizado para buscas de ponto (1-para-1), respondendo "O registro X existe?". Ele é ineficiente para buscas de grupo, pois encontrar todos os registros com a mesma chave exigiria uma varredura no índice.
+  * A **Árvore B+** é a ferramenta correta para esta tarefa, pois ela armazena chaves de forma ordenada e agrupada. Ao indexar por `idFornecedor`, todos os registros do "Fornecedor 1" ficam juntos nas folhas da árvore. Isso nos permite encontrar o primeiro registro e, em seguida, percorrer a lista ligada de folhas para recuperar *todos* os registros associados de forma extremamente eficiente.
 
-### c) Como foi implementada a exclusão lógica?
+### 3\. Como foi implementada a chave composta da tabela intermediária?
 
-A exclusão lógica foi implementada através de uma **"lápide"**, que corresponde ao primeiro byte de cada registro. Quando o método `delete` de um DAO é invocado, ele localiza o registro (utilizando o índice primário) e sobrescreve apenas este byte da lápide com um asterisco (`'*'`).
+A chave primária composta (`idFornecedor`, `idCategoria`) é implementada **logicamente** dentro da nova entidade `model/FornecedorCategoria.java`. Esta classe armazena ambos os IDs como seus únicos atributos.
 
-As operações de leitura são programadas para ignorar qualquer registro que comece com o caractere de lápide. Crucialmente, a chave do registro excluído também é removida do **índice primário (Hash Extensível)** para que o registro não seja mais encontrado em buscas diretas por ID.
+Embora o arquivo binário não tenha um índice de chave composta, a unicidade do par é validada no método `create` do `FornecedorCategoriaDAO` através de uma chamada ao método `read(idFornecedor, idCategoria)`, que realiza uma varredura para garantir que o vínculo não exista antes de ser criado.
 
-### d) Além das PKs, quais outras chaves foram utilizadas nesta etapa?
+### 4\. Como é feita a busca eficiente de registros por meio do índice?
 
-Além das **chaves primárias (PKs)** de todas as tabelas, foi utilizada a **chave estrangeira (FK)** `idCategoria` na tabela `ItemEstoque`. Esta chave estabelece o relacionamento 1:N, onde uma Categoria pode conter múltiplos Itens de Estoque.
+A busca eficiente (ex: `readAllByIdFornecedor`) é realizada através da **Árvore B+** indexada pelo `idFornecedor`. O fluxo é o seguinte:
 
-### e) Quais tipos de estruturas (hash, B+ Tree, extensível, etc.) foram utilizadas para cada chave de pesquisa?
+1.  O método `fcDAO.readAllByIdFornecedor(id)` é chamado.
+2.  Internamente, ele chama o método `indicePorFornecedor.readAll(id)`.
+3.  A Árvore B+ desce até a folha correta e coleta todos os **endereços de disco (ponteiros)** associados àquela chave `idFornecedor`, percorrendo a lista ligada de folhas, se necessário.
+4.  O DAO recebe uma `List<Long>` (lista de endereços) de volta.
+5.  O DAO itera por essa lista, usando `raf.seek(endereco)` para pular diretamente para a posição de cada registro no arquivo `fornecedor_categoria.db`, lendo e retornando apenas os registros válidos (lápide `' '`).
 
-* **Para todas as Chaves Primárias (PKs):** Foi implementado um índice de **Hash Extensível**. Esta estrutura foi escolhida por sua alta eficiência em buscas diretas por chave (complexidade O(1) em média), ideal para operações de `read`, `update` e `delete` baseadas em um ID específico.
+### 5\. Como o sistema trata a integridade referencial (remoção/atualização)?
 
-* **Para a Chave Estrangeira `idCategoria`:** Foi implementado um índice secundário utilizando uma **Árvore B+**. Esta estrutura foi escolhida por ser extremamente eficiente em buscas por faixa e por agrupar chaves iguais, permitindo recuperar rapidamente todos os registros ('N') associados a uma chave específica ('1'), o que é a exata definição da busca no relacionamento 1:N.
+A integridade referencial é mantida no nível da **aplicação** (na `MainView`):
 
-### f) Como foi implementado o relacionamento 1:N (explique a lógica da navegação entre registros e integridade referencial)?
+  * **Criação:** Antes de o método `vincularFornecedorCategoria()` ser executado, o sistema chama `fornecedorDAO.read(idF)` e `categoriaDAO.read(idC)`. O vínculo N:N só é criado se ambas as entidades principais forem encontradas, evitando a criação de "vínculos órfãos".
+  * **Remoção:** A remoção do vínculo é feita na tabela intermediária (`fcDAO.delete()`). Se um `Fornecedor` ou `Categoria` for deletado (Fase 2), os vínculos N:N se tornam órfãos, mas não quebram o sistema. Nas buscas de N:N (ex: `listarCategoriasPorFornecedor`), o sistema tenta buscar a Categoria pelo ID; se ela não for encontrada (pois foi deletada), ela simplesmente não é exibida na lista, tratando o "vínculo órfão" de forma elegante.
 
-O relacionamento 1:N entre `Categoria` e `ItemEstoque` foi implementado através de um índice secundário de **Árvore B+** sobre a chave estrangeira `idCategoria` no arquivo `itens_estoque.db`.
+### 6\. Como foi organizada a persistência dos dados dessa nova tabela?
 
-A navegação funciona da seguinte forma: para listar todos os itens de uma categoria, o sistema consulta a Árvore B+ com o `idCategoria` desejado. A árvore retorna uma lista de todos os endereços de disco (ponteiros) para os registros de `ItemEstoque` que possuem aquele `idCategoria`. O DAO então percorre essa lista, acessando diretamente cada registro no arquivo de dados sem a necessidade de uma varredura sequencial.
+A persistência da `FornecedorCategoria` segue **exatamente o mesmo padrão** das tabelas anteriores, garantindo consistência:
 
-A **integridade referencial** é mantida no nível da aplicação: antes de criar um `ItemEstoque`, a `MainView` utiliza os métodos `read` do `CategoriaDAO` e `FornecedorDAO` para verificar se os IDs da categoria e do fornecedor informados são válidos.
+  * **Arquivo:** `data/fornecedor_categoria.db`.
+  * **Cabeçalho:** Um inteiro de 4 bytes na posição 0, que usamos para armazenar a contagem total de relacionamentos ativos.
+  * **Registros:** Cada registro segue o formato `[ Lápide (1 byte) ] [ Tamanho do Registro (int - 4 bytes) ] [ Dados Serializados (N bytes) ]`.
+  * **Dados:** Os dados serializados consistem em `[ idFornecedor (int) ] [ idCategoria (int) ]`.
 
-### g) Como os índices são persistidos em disco? (formato, atualização, sincronização com os dados).
+### 7\. Descreva como o código da tabela intermediária se integra com o CRUD das tabelas principais.
 
-Cada estrutura de índice gerencia seus próprios arquivos binários dedicados, garantindo a persistência entre execuções:
+A integração ocorre na `MainView` e no `FornecedorCategoriaDAO`:
 
-* O **Hash Extensível** utiliza dois arquivos: um para o diretório (`_dir.db`), que armazena a profundidade global e a lista de ponteiros para os cestos; e outro para os cestos (`_cestos.db`), que armazena a profundidade local e os pares chave/endereço de cada cesto.
+1.  Um novo DAO, `FornecedorCategoriaDAO` (ou `fcDAO`), foi criado e instanciado na `MainView` junto com os outros DAOs.
+2.  Um novo menu, "Relacionar Fornecedor/Categoria (N:N)", foi adicionado à `MainView`.
+3.  Este menu chama os métodos do `fcDAO` (ex: `create`, `delete`).
+4.  Crucialmente, para exibir os resultados de forma amigável (ex: "Listar Categorias de um Fornecedor"), o método `listarCategoriasPorFornecedor` na `MainView` primeiro usa o `fcDAO` para obter os IDs das categorias e, em seguida, usa o **`categoriaDAO.read(id)`** para buscar o nome e a descrição de cada categoria, demonstrando a integração entre os DAOs.
 
-* A **Árvore B+** utiliza um único arquivo (`_bplus.db`) que contém um cabeçalho com o ponteiro para a página raiz, seguido pelas páginas (nós) da árvore serializadas em disco.
+### 8\. Descreva como está organizada a estrutura de diretórios e módulos no repositório após esta fase.
 
-A **sincronização** com os dados é imediata. A cada operação de `create` ou `delete` no DAO, a estrutura do índice em memória é modificada e, em seguida, as alterações são gravadas diretamente nos arquivos de índice correspondentes. Isso garante que os índices e os dados nunca fiquem dessincronizados.
+A estrutura de diretórios permanece a mesma da Fase 2, provando sua escalabilidade. A nova funcionalidade foi integrada apenas adicionando novos arquivos aos pacotes existentes, sem a necessidade de refatoração da arquitetura:
 
-### h) Como está estruturado o projeto no GitHub (pastas, módulos, arquitetura)?
+  * `src/model/FornecedorCategoria.java`: Novo arquivo adicionado.
+  * `src/dao/FornecedorCategoriaDAO.java`: Novo arquivo adicionado.
+  * `src/view/MainView.java`: Arquivo existente que foi *atualizado* para incluir o novo menu e as chamadas ao novo DAO.
+  * `data/`: Agora contém os novos arquivos de dados e índice: `fornecedor_categoria.db` e `fc_idx_fornecedor_bplus.db`.
 
-O projeto está estruturado seguindo o padrão arquitetural **MVC + DAO**, organizado em pacotes Java distintos dentro da pasta `src/`:
-
-* `/src/app`: Contém a classe `Main`, ponto de entrada da aplicação.
-* `/src/view`: Contém a classe de interface com o usuário via console (`MainView`).
-* `/src/model`: Contém as classes de domínio (`Categoria`, `Fornecedor`, `ItemEstoque`).
-* `/src/dao`: Contém as classes de acesso a dados, responsáveis pela manipulação dos arquivos binários e pela interação com os índices.
-* `/src/indices`: Contém as implementações das estruturas de dados (`HashExtensivel`, `ArvoreBPlus`).
-* `/data`: Diretório na raiz do projeto onde todos os arquivos de dados (`.db`) e de índices são criados e mantidos.
