@@ -8,15 +8,18 @@ import java.util.Scanner;
 import dao.CategoriaDAO;
 import dao.FornecedorDAO;
 import dao.ItemEstoqueDAO;
+import dao.FornecedorCategoriaDAO; // 1. IMPORTAÇÃO ADICIONADA
 import model.Categoria;
 import model.Fornecedor;
 import model.ItemEstoque;
+import model.FornecedorCategoria; // 2. IMPORTAÇÃO ADICIONADA
 
 public class MainView {
 
     private CategoriaDAO categoriaDAO;
     private FornecedorDAO fornecedorDAO;
     private ItemEstoqueDAO itemEstoqueDAO;
+    private FornecedorCategoriaDAO fcDAO; // 3. NOVO DAO ADICIONADO
     private Scanner scanner;
 
     public MainView() {
@@ -24,6 +27,7 @@ public class MainView {
             this.categoriaDAO = new CategoriaDAO();
             this.fornecedorDAO = new FornecedorDAO();
             this.itemEstoqueDAO = new ItemEstoqueDAO();
+            this.fcDAO = new FornecedorCategoriaDAO(); // 4. NOVO DAO INICIALIZADO
             this.scanner = new Scanner(System.in);
         } catch (IOException e) {
             System.err.println("Erro ao inicializar os DAOs: " + e.getMessage());
@@ -48,6 +52,9 @@ public class MainView {
                     case 3:
                         gerenciarItensEstoque();
                         break;
+                    case 4: // 5. NOVA OPÇÃO
+                        gerenciarRelacionamentos();
+                        break;
                     case 0:
                         System.out.println("Saindo do sistema...");
                         break;
@@ -64,6 +71,7 @@ public class MainView {
             categoriaDAO.close();
             fornecedorDAO.close();
             itemEstoqueDAO.close();
+            fcDAO.close(); // 6. FECHAMENTO DO NOVO DAO
         } catch (IOException e) {
             System.err.println("Erro ao fechar os arquivos dos DAOs: " + e.getMessage());
         }
@@ -74,11 +82,12 @@ public class MainView {
         System.out.println("1. Gerenciar Categorias");
         System.out.println("2. Gerenciar Fornecedores");
         System.out.println("3. Gerenciar Itens de Estoque");
+        System.out.println("4. Relacionar Fornecedor/Categoria (N:N)"); // 7. NOVA OPÇÃO
         System.out.println("0. Sair");
         System.out.print("Escolha uma opção: ");
     }
 
-    // --- MÉTODOS DE GERENCIAMENTO DE CATEGORIAS ---
+    // --- MÉTODOS DE GERENCIAMENTO DE CATEGORIAS (SEU CÓDIGO EXISTENTE) ---
 
     private void gerenciarCategorias() throws IOException {
         int opcao = -1;
@@ -160,7 +169,7 @@ public class MainView {
         }
     }
 
-    // --- MÉTODOS DE GERENCIAMENTO DE FORNECEDORES ---
+    // --- MÉTODOS DE GERENCIAMENTO DE FORNECEDORES (SEU CÓDIGO EXISTENTE) ---
 
     private void gerenciarFornecedores() throws IOException {
         int opcao = -1;
@@ -230,19 +239,15 @@ public class MainView {
             System.out.println("Fornecedor com ID " + id + " não encontrado.");
             return;
         }
-
         System.out.print("Digite o novo nome (ou deixe em branco para manter): ");
         String nome = scanner.nextLine();
         if (!nome.isEmpty()) fornecedorExistente.setNome(nome);
-
         System.out.print("Digite o novo CNPJ (ou deixe em branco para manter): ");
         String cnpj = scanner.nextLine();
         if (!cnpj.isEmpty()) fornecedorExistente.setCnpj(cnpj);
-
         System.out.print("Digite o novo endereço (ou deixe em branco para manter): ");
         String endereco = scanner.nextLine();
         if (!endereco.isEmpty()) fornecedorExistente.setEndereco(endereco);
-
         System.out.print("Deseja substituir a lista de telefones? (s/N): ");
         if (scanner.nextLine().equalsIgnoreCase("s")) {
             List<String> novosTelefones = new ArrayList<>();
@@ -272,7 +277,7 @@ public class MainView {
         }
     }
 
-    // --- MÉTODOS DE GERENCIAMENTO DE ITENS DE ESTOQUE ---
+    // --- MÉTODOS DE GERENCIAMENTO DE ITENS DE ESTOQUE (SEU CÓDIGO EXISTENTE) ---
 
     private void gerenciarItensEstoque() throws IOException {
         int opcao = -1;
@@ -284,7 +289,7 @@ public class MainView {
                 case 2: buscarItemEstoque(); break;
                 case 3: atualizarItemEstoque(); break;
                 case 4: deletarItemEstoque(); break;
-                case 5: listarItensPorCategoria(); break; // <-- NOVA CHAMADA
+                case 5: listarItensPorCategoria(); break;
                 case 0: System.out.println("Retornando ao menu principal..."); break;
                 default: System.out.println("Opção inválida!");
             }
@@ -297,7 +302,7 @@ public class MainView {
         System.out.println("2. Buscar Item por ID");
         System.out.println("3. Atualizar Item");
         System.out.println("4. Deletar Item");
-        System.out.println("5. Listar Itens por Categoria"); // <-- NOVA OPÇÃO
+        System.out.println("5. Listar Itens por Categoria");
         System.out.println("0. Voltar");
         System.out.print("Escolha uma opção: ");
     }
@@ -305,13 +310,10 @@ public class MainView {
     private void criarItemEstoque() throws IOException {
         System.out.print("Digite o nome do item: ");
         String nome = scanner.nextLine();
-        
         System.out.print("Digite a quantidade inicial: ");
         int quantidade = Integer.parseInt(scanner.nextLine());
-        
         System.out.print("Digite o preço unitário (ex: 12.99): ");
         double preco = Double.parseDouble(scanner.nextLine());
-
         int idCategoria;
         while (true) {
             System.out.print("Digite o ID da Categoria: ");
@@ -321,7 +323,6 @@ public class MainView {
             }
             System.out.println("Erro: Categoria com ID " + idCategoria + " não existe. Tente novamente.");
         }
-
         int idFornecedor;
         while (true) {
             System.out.print("Digite o ID do Fornecedor: ");
@@ -331,7 +332,6 @@ public class MainView {
             }
             System.out.println("Erro: Fornecedor com ID " + idFornecedor + " não existe. Tente novamente.");
         }
-
         ItemEstoque novoItem = new ItemEstoque(nome, quantidade, preco, idCategoria, idFornecedor);
         ItemEstoque itemCriado = itemEstoqueDAO.create(novoItem);
         
@@ -357,15 +357,12 @@ public class MainView {
             System.out.println("Item com ID " + id + " não encontrado.");
             return;
         }
-
         System.out.print("Digite o novo nome (ou deixe em branco para manter): ");
         String nome = scanner.nextLine();
         if (!nome.isEmpty()) itemExistente.setNome(nome);
-
         System.out.print("Digite a nova quantidade (ou deixe em branco para manter): ");
         String qtdStr = scanner.nextLine();
         if (!qtdStr.isEmpty()) itemExistente.setQuantidade(Integer.parseInt(qtdStr));
-
         System.out.print("Digite o novo preço (ou deixe em branco para manter): ");
         String precoStr = scanner.nextLine();
         if (!precoStr.isEmpty()) itemExistente.setPrecoUnitario(Double.parseDouble(precoStr));
@@ -387,27 +384,138 @@ public class MainView {
         }
     }
 
-    /**
-     * NOVO MÉTODO: Pede um ID de categoria e lista todos os itens associados.
-     */
     private void listarItensPorCategoria() throws IOException {
         System.out.print("Digite o ID da Categoria para listar os itens: ");
         int idCategoria = Integer.parseInt(scanner.nextLine());
-
-        // Valida se a categoria existe
         if (categoriaDAO.read(idCategoria) == null) {
             System.out.println("Erro: Categoria com ID " + idCategoria + " não existe.");
             return;
         }
-
         List<ItemEstoque> itens = itemEstoqueDAO.readAllByIdCategoria(idCategoria);
-
         if (itens.isEmpty()) {
             System.out.println("Nenhum item encontrado para esta categoria.");
         } else {
             System.out.println("\n--- Itens da Categoria ID " + idCategoria + " ---");
             for (ItemEstoque item : itens) {
                 System.out.println(item);
+            }
+        }
+    }
+
+    // --- 8. MÉTODOS NOVOS PARA O RELACIONAMENTO N:N (ADICIONADOS) ---
+
+    private void gerenciarRelacionamentos() throws IOException {
+        int opcao = -1;
+        while (opcao != 0) {
+            exibirMenuRelacionamentos();
+            opcao = Integer.parseInt(scanner.nextLine());
+            switch (opcao) {
+                case 1: vincularFornecedorCategoria(); break;
+                case 2: desvincularFornecedorCategoria(); break;
+                case 3: listarCategoriasPorFornecedor(); break;
+                case 4: listarFornecedoresPorCategoria(); break;
+                case 0: System.out.println("Retornando ao menu principal..."); break;
+                default: System.out.println("Opção inválida!");
+            }
+        }
+    }
+
+    private void exibirMenuRelacionamentos() {
+        System.out.println("\n--- Gerenciamento de Relacionamentos (N:N) ---");
+        System.out.println("1. Vincular Fornecedor a Categoria");
+        System.out.println("2. Desvincular Fornecedor de Categoria");
+        System.out.println("3. Listar Categorias de um Fornecedor (Busca Otimizada B+ Tree)");
+        System.out.println("4. Listar Fornecedores de uma Categoria (Busca Sequencial)");
+        System.out.println("0. Voltar");
+        System.out.print("Escolha uma opção: ");
+    }
+
+    private boolean validarEntidades(int idFornecedor, int idCategoria) throws IOException {
+        if (fornecedorDAO.read(idFornecedor) == null) {
+            System.err.println("Erro: Fornecedor com ID " + idFornecedor + " não encontrado.");
+            return false;
+        }
+        if (categoriaDAO.read(idCategoria) == null) {
+            System.err.println("Erro: Categoria com ID " + idCategoria + " não encontrada.");
+            return false;
+        }
+        return true;
+    }
+
+    private void vincularFornecedorCategoria() throws IOException {
+        System.out.print("Digite o ID do Fornecedor: ");
+        int idFornecedor = Integer.parseInt(scanner.nextLine());
+        System.out.print("Digite o ID da Categoria a ser vinculada: ");
+        int idCategoria = Integer.parseInt(scanner.nextLine());
+
+        if (!validarEntidades(idFornecedor, idCategoria)) return;
+
+        if (fcDAO.create(idFornecedor, idCategoria)) {
+            System.out.println("Vínculo criado com sucesso!");
+        } else {
+            System.out.println("Falha ao criar vínculo (possivelmente já existe).");
+        }
+    }
+
+    private void desvincularFornecedorCategoria() throws IOException {
+        System.out.print("Digite o ID do Fornecedor: ");
+        int idFornecedor = Integer.parseInt(scanner.nextLine());
+        System.out.print("Digite o ID da Categoria a ser desvinculada: ");
+        int idCategoria = Integer.parseInt(scanner.nextLine());
+
+        if (fcDAO.delete(idFornecedor, idCategoria)) {
+            System.out.println("Vínculo desfeito com sucesso!");
+        } else {
+            System.out.println("Falha ao desfazer o vínculo (vínculo não encontrado).");
+        }
+    }
+
+    private void listarCategoriasPorFornecedor() throws IOException {
+        System.out.print("Digite o ID do Fornecedor para listar suas categorias: ");
+        int idFornecedor = Integer.parseInt(scanner.nextLine());
+
+        if (fornecedorDAO.read(idFornecedor) == null) {
+            System.err.println("Erro: Fornecedor com ID " + idFornecedor + " não encontrado.");
+            return;
+        }
+        
+        System.out.println("\n--- Categorias do Fornecedor ID " + idFornecedor + " (Busca B+ Tree) ---");
+        List<FornecedorCategoria> relacoes = fcDAO.readAllByIdFornecedor(idFornecedor);
+        
+        if (relacoes.isEmpty()) {
+            System.out.println("Este fornecedor não está vinculado a nenhuma categoria.");
+            return;
+        }
+
+        for (FornecedorCategoria fc : relacoes) {
+            Categoria c = categoriaDAO.read(fc.getIdCategoria());
+            if (c != null) {
+                System.out.println(c);
+            }
+        }
+    }
+
+    private void listarFornecedoresPorCategoria() throws IOException {
+        System.out.print("Digite o ID da Categoria para listar seus fornecedores: ");
+        int idCategoria = Integer.parseInt(scanner.nextLine());
+
+        if (categoriaDAO.read(idCategoria) == null) {
+            System.err.println("Erro: Categoria com ID " + idCategoria + " não encontrada.");
+            return;
+        }
+
+        System.out.println("\n--- Fornecedores da Categoria ID " + idCategoria + " (Busca Sequencial) ---");
+        List<FornecedorCategoria> relacoes = fcDAO.readAllByIdCategoria(idCategoria);
+        
+        if (relacoes.isEmpty()) {
+            System.out.println("Esta categoria não possui fornecedores vinculados.");
+            return;
+        }
+
+        for (FornecedorCategoria fc : relacoes) {
+            Fornecedor f = fornecedorDAO.read(fc.getIdFornecedor());
+            if (f != null) {
+                System.out.println(f);
             }
         }
     }
