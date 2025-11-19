@@ -5,21 +5,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+// Imports dos DAOs
 import dao.CategoriaDAO;
 import dao.FornecedorDAO;
 import dao.ItemEstoqueDAO;
-import dao.FornecedorCategoriaDAO; // 1. IMPORTAÇÃO ADICIONADA
+import dao.FornecedorCategoriaDAO;
+
+// Imports dos Models
 import model.Categoria;
 import model.Fornecedor;
 import model.ItemEstoque;
-import model.FornecedorCategoria; // 2. IMPORTAÇÃO ADICIONADA
+import model.FornecedorCategoria;
+
+// --- NOVOS IMPORTS DA FASE 4 ---
+import compressao.GerenciadorBackup;
+import seguranca.CriptografiaRSA;
 
 public class MainView {
 
     private CategoriaDAO categoriaDAO;
     private FornecedorDAO fornecedorDAO;
     private ItemEstoqueDAO itemEstoqueDAO;
-    private FornecedorCategoriaDAO fcDAO; // 3. NOVO DAO ADICIONADO
+    private FornecedorCategoriaDAO fcDAO;
     private Scanner scanner;
 
     public MainView() {
@@ -27,7 +34,7 @@ public class MainView {
             this.categoriaDAO = new CategoriaDAO();
             this.fornecedorDAO = new FornecedorDAO();
             this.itemEstoqueDAO = new ItemEstoqueDAO();
-            this.fcDAO = new FornecedorCategoriaDAO(); // 4. NOVO DAO INICIALIZADO
+            this.fcDAO = new FornecedorCategoriaDAO();
             this.scanner = new Scanner(System.in);
         } catch (IOException e) {
             System.err.println("Erro ao inicializar os DAOs: " + e.getMessage());
@@ -52,8 +59,11 @@ public class MainView {
                     case 3:
                         gerenciarItensEstoque();
                         break;
-                    case 4: // 5. NOVA OPÇÃO
+                    case 4:
                         gerenciarRelacionamentos();
+                        break;
+                    case 5: // --- FASE 4: NOVO MENU ---
+                        menuUtilitarios();
                         break;
                     case 0:
                         System.out.println("Saindo do sistema...");
@@ -71,7 +81,7 @@ public class MainView {
             categoriaDAO.close();
             fornecedorDAO.close();
             itemEstoqueDAO.close();
-            fcDAO.close(); // 6. FECHAMENTO DO NOVO DAO
+            fcDAO.close();
         } catch (IOException e) {
             System.err.println("Erro ao fechar os arquivos dos DAOs: " + e.getMessage());
         }
@@ -80,14 +90,72 @@ public class MainView {
     private void exibirMenuPrincipal() {
         System.out.println("\n--- MENU PRINCIPAL ---");
         System.out.println("1. Gerenciar Categorias");
-        System.out.println("2. Gerenciar Fornecedores");
+        System.out.println("2. Gerenciar Fornecedores (RSA Ativo)");
         System.out.println("3. Gerenciar Itens de Estoque");
-        System.out.println("4. Relacionar Fornecedor/Categoria (N:N)"); // 7. NOVA OPÇÃO
+        System.out.println("4. Relacionar Fornecedor/Categoria (N:N)");
+        System.out.println("5. Utilitários de Segurança e Backup (Fase 4)"); // NOVO
         System.out.println("0. Sair");
         System.out.print("Escolha uma opção: ");
     }
 
-    // --- MÉTODOS DE GERENCIAMENTO DE CATEGORIAS (SEU CÓDIGO EXISTENTE) ---
+    // --- MÉTODOS NOVOS DA FASE 4 (IMPLEMENTADOS AQUI) ---
+
+    private void menuUtilitarios() {
+        System.out.println("\n--- Utilitários de Segurança e Backup ---");
+        System.out.println("1. Realizar Backup (Huffman)");
+        System.out.println("2. Realizar Backup (LZW)");
+        System.out.println("3. RESTAURAR Backup (Huffman) - Cuidado: Sobrescreve dados!");
+        System.out.println("4. RESTAURAR Backup (LZW) - Cuidado: Sobrescreve dados!");
+        System.out.println("5. Gerar novas chaves RSA (Cuidado: Invalida dados antigos!)");
+        System.out.println("0. Voltar");
+        System.out.print("Escolha uma opção: ");
+
+        try {
+            int op = Integer.parseInt(scanner.nextLine());
+            switch (op) {
+                case 1:
+                    System.out.println("Iniciando compressão Huffman...");
+                    GerenciadorBackup.realizarBackup(1);
+                    break;
+                case 2:
+                    System.out.println("Iniciando compressão LZW...");
+                    GerenciadorBackup.realizarBackup(2);
+                    break;
+                case 3:
+                    System.out.println("--> ATENÇÃO: Isso vai apagar os dados atuais da pasta 'data' e restaurar o backup Huffman.");
+                    System.out.print("Deseja continuar? (s/N): ");
+                    if (scanner.nextLine().equalsIgnoreCase("s")) {
+                        GerenciadorBackup.restaurarBackup(1);
+                    }
+                    break;
+                case 4:
+                    System.out.println("--> ATENÇÃO: Isso vai apagar os dados atuais da pasta 'data' e restaurar o backup LZW.");
+                    System.out.print("Deseja continuar? (s/N): ");
+                    if (scanner.nextLine().equalsIgnoreCase("s")) {
+                        GerenciadorBackup.restaurarBackup(2);
+                    }
+                    break;
+                case 5:
+                    System.out.print("Tem certeza? Se gerar novas chaves, não conseguirá ler os CNPJs já cadastrados! (s/N): ");
+                    String confirm = scanner.nextLine();
+                    if (confirm.equalsIgnoreCase("s")) {
+                        new CriptografiaRSA().gerarParDeChaves();
+                        System.out.println("Novas chaves geradas em data/chaves/ com sucesso.");
+                    } else {
+                        System.out.println("Operação cancelada.");
+                    }
+                    break;
+                case 0:
+                    return;
+                default:
+                    System.out.println("Opção inválida.");
+            }
+        } catch (Exception e) {
+            System.err.println("Erro no utilitário: " + e.getMessage());
+        }
+    }
+
+    // --- MÉTODOS DE GERENCIAMENTO DE CATEGORIAS ---
 
     private void gerenciarCategorias() throws IOException {
         int opcao = -1;
@@ -169,7 +237,7 @@ public class MainView {
         }
     }
 
-    // --- MÉTODOS DE GERENCIAMENTO DE FORNECEDORES (SEU CÓDIGO EXISTENTE) ---
+    // --- MÉTODOS DE GERENCIAMENTO DE FORNECEDORES ---
 
     private void gerenciarFornecedores() throws IOException {
         int opcao = -1;
@@ -239,15 +307,19 @@ public class MainView {
             System.out.println("Fornecedor com ID " + id + " não encontrado.");
             return;
         }
+
         System.out.print("Digite o novo nome (ou deixe em branco para manter): ");
         String nome = scanner.nextLine();
         if (!nome.isEmpty()) fornecedorExistente.setNome(nome);
+
         System.out.print("Digite o novo CNPJ (ou deixe em branco para manter): ");
         String cnpj = scanner.nextLine();
         if (!cnpj.isEmpty()) fornecedorExistente.setCnpj(cnpj);
+
         System.out.print("Digite o novo endereço (ou deixe em branco para manter): ");
         String endereco = scanner.nextLine();
         if (!endereco.isEmpty()) fornecedorExistente.setEndereco(endereco);
+
         System.out.print("Deseja substituir a lista de telefones? (s/N): ");
         if (scanner.nextLine().equalsIgnoreCase("s")) {
             List<String> novosTelefones = new ArrayList<>();
@@ -277,7 +349,7 @@ public class MainView {
         }
     }
 
-    // --- MÉTODOS DE GERENCIAMENTO DE ITENS DE ESTOQUE (SEU CÓDIGO EXISTENTE) ---
+    // --- MÉTODOS DE GERENCIAMENTO DE ITENS DE ESTOQUE ---
 
     private void gerenciarItensEstoque() throws IOException {
         int opcao = -1;
@@ -310,10 +382,13 @@ public class MainView {
     private void criarItemEstoque() throws IOException {
         System.out.print("Digite o nome do item: ");
         String nome = scanner.nextLine();
+        
         System.out.print("Digite a quantidade inicial: ");
         int quantidade = Integer.parseInt(scanner.nextLine());
+        
         System.out.print("Digite o preço unitário (ex: 12.99): ");
         double preco = Double.parseDouble(scanner.nextLine());
+
         int idCategoria;
         while (true) {
             System.out.print("Digite o ID da Categoria: ");
@@ -323,6 +398,7 @@ public class MainView {
             }
             System.out.println("Erro: Categoria com ID " + idCategoria + " não existe. Tente novamente.");
         }
+
         int idFornecedor;
         while (true) {
             System.out.print("Digite o ID do Fornecedor: ");
@@ -332,6 +408,7 @@ public class MainView {
             }
             System.out.println("Erro: Fornecedor com ID " + idFornecedor + " não existe. Tente novamente.");
         }
+
         ItemEstoque novoItem = new ItemEstoque(nome, quantidade, preco, idCategoria, idFornecedor);
         ItemEstoque itemCriado = itemEstoqueDAO.create(novoItem);
         
@@ -357,12 +434,15 @@ public class MainView {
             System.out.println("Item com ID " + id + " não encontrado.");
             return;
         }
+
         System.out.print("Digite o novo nome (ou deixe em branco para manter): ");
         String nome = scanner.nextLine();
         if (!nome.isEmpty()) itemExistente.setNome(nome);
+
         System.out.print("Digite a nova quantidade (ou deixe em branco para manter): ");
         String qtdStr = scanner.nextLine();
         if (!qtdStr.isEmpty()) itemExistente.setQuantidade(Integer.parseInt(qtdStr));
+
         System.out.print("Digite o novo preço (ou deixe em branco para manter): ");
         String precoStr = scanner.nextLine();
         if (!precoStr.isEmpty()) itemExistente.setPrecoUnitario(Double.parseDouble(precoStr));
@@ -387,11 +467,14 @@ public class MainView {
     private void listarItensPorCategoria() throws IOException {
         System.out.print("Digite o ID da Categoria para listar os itens: ");
         int idCategoria = Integer.parseInt(scanner.nextLine());
+
         if (categoriaDAO.read(idCategoria) == null) {
             System.out.println("Erro: Categoria com ID " + idCategoria + " não existe.");
             return;
         }
+
         List<ItemEstoque> itens = itemEstoqueDAO.readAllByIdCategoria(idCategoria);
+
         if (itens.isEmpty()) {
             System.out.println("Nenhum item encontrado para esta categoria.");
         } else {
@@ -402,7 +485,7 @@ public class MainView {
         }
     }
 
-    // --- 8. MÉTODOS NOVOS PARA O RELACIONAMENTO N:N (ADICIONADOS) ---
+    // --- MÉTODOS DO RELACIONAMENTO N:N (FASE 3) ---
 
     private void gerenciarRelacionamentos() throws IOException {
         int opcao = -1;
