@@ -1,10 +1,8 @@
-# AEDS3TP - Aplicativo de Gerenciamento de Dados em Memória Secundária
+# AEDS3TP - Sistema de Gerenciamento de Dados em Memória Secundária
 
-### Fase 3 - Índices B+, Hash Extensível e Relacionamento N:N
+### Projeto Final (Fases 1 a 5)
 
-Este projeto consiste no desenvolvimento de um sistema de banco de dados em baixo nível, focado no gerenciamento de um estoque. A solução realiza a persistência de dados diretamente em arquivos binários, sem o auxílio de um SGBD tradicional.
-
-O sistema implementa o CRUD completo para todas as entidades e utiliza estruturas de índice avançadas — **Hash Extensível** para chaves primárias e **Árvore B+** para chaves estrangeiras — para garantir operações de busca eficientes e escaláveis.
+Este projeto consiste no desenvolvimento de um sistema de banco de dados em baixo nível, focado no gerenciamento de um estoque. A solução realiza a persistência de dados diretamente em arquivos binários, sem o auxílio de um SGBD tradicional, implementando estruturas de dados avançadas, segurança e algoritmos de busca.
 
 ## 1\. Componentes do Grupo
 
@@ -13,110 +11,103 @@ O sistema implementa o CRUD completo para todas as entidades e utiliza estrutura
 
 ## 2\. Funcionalidades Implementadas
 
-  - ✅ **CRUD Completo:** Para as entidades `Categoria`, `Fornecedor` e `ItemEstoque`.
-  - ✅ **Relacionamento 1:N:** Entre `Categoria` e `ItemEstoque`, otimizado com um índice secundário de **Árvore B+**.
-  - ✅ **Relacionamento N:N:** Entre `Fornecedor` e `Categoria`, implementado com uma tabela associativa (`FornecedorCategoria`) e um índice de **Árvore B+** para buscas eficientes.
-  - ✅ **Persistência Binária Robusta:** Os dados são armazenados em arquivos de acesso aleatório (`.db`) com um cabeçalho para controle de IDs e um sistema de **exclusão lógica por lápide**.
-  - ✅ **Índice Primário com Hash Extensível:** Todas as buscas por ID de registro são otimizadas com um índice Hash Extensível, garantindo performance média de **O(1)**.
+### Gerenciamento de Dados (Fases 1 e 2)
+
+  * ✅ **CRUD Completo:** Para as entidades `Categoria`, `Fornecedor` e `ItemEstoque`.
+  * ✅ **Persistência Binária:** Arquivos de acesso aleatório (`.db`) com cabeçalho de metadados e **exclusão lógica por lápide**.
+  * ✅ **Índices:**
+      * **Hash Extensível:** Para todas as Chaves Primárias (PK), garantindo busca $O(1)$.
+      * **Árvore B+:** Para chaves estrangeiras (Relacionamento 1:N), permitindo listar itens por categoria de forma eficiente.
+
+### Relacionamentos Avançados (Fase 3)
+
+  * ✅ **Relacionamento N:N:** Entre `Fornecedor` e `Categoria`, implementado com uma tabela associativa e índice de **Árvore B+**.
+
+### Segurança e Utilitários (Fase 4)
+
+  * ✅ **Criptografia RSA:** O campo sensível `CNPJ` é criptografado antes de ser gravado no disco e descriptografado apenas na leitura. As chaves (Pública/Privada) são gerenciadas automaticamente.
+
+[Image of RSA encryption process diagram]
+
+  * ✅ **Backup Compactado:** Sistema capaz de realizar backup completo de todos os bancos de dados e chaves.
+  * ✅ **Compressão:** Implementação dos algoritmos **Huffman** e **LZW** para reduzir o tamanho dos backups.
+  * ✅ **Restore (Recuperação):** Capacidade de restaurar o sistema integralmente a partir de um arquivo `.cmp` em caso de perda de dados.
+
+### Busca Textual (Fase 5)
+
+  * ✅ **Casamento de Padrões:** Implementação de motor de busca para encontrar itens pelo nome (substring).
+  * ✅ **Algoritmos:** Opção de escolha entre **KMP (Knuth-Morris-Pratt)** e **Boyer-Moore**.
 
 ## 3\. Arquitetura e Estrutura de Pastas
 
-O sistema segue a arquitetura **MVC + DAO (Model-View-Controller + Data Access Object)**. A estrutura de pastas foi projetada para separar claramente as responsabilidades de cada componente:
+O sistema segue a arquitetura **MVC + DAO**. A estrutura de pacotes reflete a modularização do projeto:
 
-```
+```text
 .
-├── bin/               # Diretório de saída dos arquivos compilados (.class)
-├── data/              # Armazena os arquivos de dados (.db) e índices
-├── docs/              # Contém a documentação PDF do projeto (Fase 2)
-└── src/               # Código-fonte do projeto
-    ├── app/           # Ponto de entrada da aplicação (classe Main)
-    ├── view/          # Camada de apresentação (interface com o usuário via console)
-    ├── model/         # Classes de domínio (entidades: Categoria, Fornecedor, etc.)
-    ├── dao/           # Camada de acesso a dados (manipulação dos arquivos e índices)
-    └── indices/       # Implementações das estruturas de dados (Hash e B+ Tree)
+├── bin/                 # Arquivos compilados (.class)
+├── data/                # Arquivos de dados (.db), índices e chaves de segurança
+├── docs/                # Documentação e relatórios
+└── src/                 # Código-fonte
+    ├── app/             # Main (Ponto de entrada)
+    ├── model/           # Entidades (Categoria, Fornecedor, etc.)
+    ├── view/            # Interface via Console
+    ├── dao/             # Acesso a dados e gerenciamento de arquivos
+    ├── indices/         # Estruturas (Hash Extensível, Árvore B+)
+    ├── compressao/      # Algoritmos Huffman, LZW e Gerenciador de Backup
+    ├── seguranca/       # Criptografia RSA e gestão de chaves
+    └── padroes/         # Algoritmos de busca KMP e Boyer-Moore
 ```
 
 ## 4\. Como Compilar e Executar
 
 ### Pré-requisitos
 
-  * **JDK (Java Development Kit) versão 11 ou superior**, devidamente instalado e configurado nas variáveis de ambiente do sistema.
+  * **JDK 11 ou superior**.
 
 ### Compilação
 
-Todos os comandos devem ser executados a partir do **diretório raiz do projeto**.
+Execute a partir da **raiz** do projeto:
 
------
+**Windows (PowerShell):**
 
-#### Windows (PowerShell / Windows Terminal)
+```powershell
+mkdir bin
+javac -d bin -encoding UTF-8 @(Get-ChildItem -Recurse -Path src -Filter *.java | ForEach-Object { $_.FullName })
+```
 
-*Recomendado para Windows 10 e 11.*
+**Linux / macOS:**
 
-1.  Crie o diretório de saída (necessário apenas na primeira vez):
-    ```powershell
-    mkdir bin
-    ```
-2.  Compile todos os arquivos `.java` recursivamente:
-    ```powershell
-    javac -d bin @(Get-ChildItem -Recurse -Path src -Filter *.java | ForEach-Object { $_.FullName })
-    ```
-    *(Nota: Corrigido o erro de digitação de `-Recourse` para `-Recurse`)*
-
------
-
-#### Linux e macOS
-
-1.  Crie o diretório de saída:
-    ```bash
-    mkdir -p bin
-    ```
-2.  Compile todos os arquivos `.java` recursivamente:
-    ```bash
-    javac -d bin $(find src -name "*.java")
-    ```
-
------
-
-#### Windows (CMD Clássico)
-
-*Método alternativo para versões mais antigas do Windows.*
-
-1.  Crie um arquivo com a lista de todos os fontes:
-    ```cmd
-    dir /s /b src\*.java > sources.txt
-    ```
-2.  Compile o projeto usando a lista de arquivos gerada:
-    ```cmd
-    javac -d bin @sources.txt
-    ```
+```bash
+mkdir -p bin
+javac -d bin -encoding UTF-8 $(find src -name "*.java")
+```
 
 ### Execução
-
-Após a compilação, execute o programa com o seguinte comando (válido para todos os sistemas):
 
 ```bash
 java -cp bin app.Main
 ```
 
-*O comando `-cp bin` (classpath) informa à JVM para procurar os arquivos `.class` compilados dentro do diretório `bin`.*
+## 5\. Fluxo de Teste Recomendado (Tour Completo)
 
-O menu interativo do sistema será exibido no console.
+Para validar todas as funcionalidades do projeto final:
 
-## 5\. Fluxo de Teste Recomendado
-
-Para validar todas as funcionalidades implementadas (Fases 2 e 3), siga este fluxo:
-
-1.  **Comece com uma base limpa:** Apague as pastas `data/` e `bin/` (se existirem) antes de compilar.
-2.  **Compile e Execute** o programa.
-3.  **Crie as Entidades Principais:**
-      * Acesse `1. Gerenciar Categorias` e crie pelo menos duas (ex: "Laticínios" e "Limpeza").
-      * Acesse `2. Gerenciar Fornecedores` e crie pelo menos dois (ex: "Distribuidora ABC" e "Laticínios da Serra").
-4.  **Teste o Relacionamento 1:N (Fase 2):**
-      * Acesse `3. Gerenciar Itens de Estoque` e crie alguns itens, associando-os às categorias e fornecedores criados (ex: crie "Queijo" e "Iogurte", ambos para a categoria "Laticínios").
-      * No mesmo menu, use a opção `5. Listar Itens por Categoria` e digite o ID de "Laticínios". O sistema deve listar apenas "Queijo" e "Iogurte".
-5.  **Teste o Relacionamento N:N (Fase 3):**
-      * Acesse `4. Relacionar Fornecedor/Categoria (N:N)`.
-      * Use a opção `1. Vincular Fornecedor a Categoria` e crie os seguintes vínculos:
-          * "Distribuidora ABC" (ID 1) -\> "Laticínios" (ID 1)
-          * "Distribuidora ABC" (ID 1) -\> "Limpeza" (ID 2)
-      * No mesmo menu, use a opção `3. Listar Categorias de um Fornecedor` e digite o ID da "Distribuidora ABC" (ID 1). O sistema deve listar "Laticínios" e "Limpeza", comprovando o funcionamento do índice B+ no relacionamento N:N.
+1.  **Limpeza (Opcional):** Apague a pasta `data/` para iniciar o sistema do zero. O sistema recriará arquivos e chaves RSA automaticamente.
+2.  **Criação de Dados (CRUD + RSA):**
+      * Crie Categorias ("Eletrônicos") e Fornecedores ("Tech Safe").
+      * *Observe:* Ao listar o fornecedor, o CNPJ aparece legível, provando que o RSA descriptografou o dado do disco.
+3.  **Relacionamentos (B+ Tree):**
+      * Crie Itens de Estoque vinculados às categorias.
+      * Use a opção "Listar Itens por Categoria" para testar a Árvore B+.
+      * Vincule Fornecedor a Categoria (Menu 4) e liste os vínculos.
+4.  **Busca Textual (Fase 5):**
+      * Vá ao menu **6. Pesquisar Padrão**.
+      * Escolha **KMP** ou **Boyer-Moore**.
+      * Busque por uma parte do nome (ex: "Dell" para achar "Notebook Dell").
+5.  **Backup e Desastre (Fase 4):**
+      * Vá ao menu **5. Utilitários**.
+      * Faça um **Backup Huffman**.
+      * **Simule o Desastre:** Feche o programa e apague todos os arquivos `.db` da pasta `data/`.
+      * Abra o programa novamente (os dados terão sumido).
+      * Use a opção **3. Restaurar Backup (Huffman)**.
+      * Verifique se os dados (e as chaves de criptografia) foram restaurados corretamente listando os fornecedores.
