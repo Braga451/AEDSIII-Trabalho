@@ -18,9 +18,13 @@ import model.Fornecedor;
 import model.ItemEstoque;
 import model.FornecedorCategoria;
 
-// --- NOVOS IMPORTS DA FASE 4 ---
+// Imports da Fase 4 (Compressão e Segurança)
 import compressao.GerenciadorBackup;
 import seguranca.CriptografiaRSA;
+
+// Imports da Fase 5 (Padrões de Projeto)
+import padroes.KMP;
+import padroes.BoyerMoore;
 
 public class MainView {
 
@@ -32,14 +36,12 @@ public class MainView {
 
     public MainView() {
         try {
-            File folder = new File("data");
-            if (!folder.exists()) {
-                folder.mkdirs(); // Cria a pasta 'data' se não existir
-            }
+            // Garante que as pastas necessárias existam antes de iniciar
+            File folderData = new File("data");
+            if (!folderData.exists()) folderData.mkdirs();
+            
             File folderChaves = new File("data/chaves");
-            if (!folderChaves.exists()) {
-                folderChaves.mkdirs(); // Garante a pasta de chaves também
-            }
+            if (!folderChaves.exists()) folderChaves.mkdirs();
 
             this.categoriaDAO = new CategoriaDAO();
             this.fornecedorDAO = new FornecedorDAO();
@@ -58,7 +60,10 @@ public class MainView {
         while (opcao != 0) {
             exibirMenuPrincipal();
             try {
-                opcao = Integer.parseInt(scanner.nextLine());
+                String input = scanner.nextLine();
+                if (input.isEmpty()) continue;
+                opcao = Integer.parseInt(input);
+                
                 switch (opcao) {
                     case 1:
                         gerenciarCategorias();
@@ -72,8 +77,11 @@ public class MainView {
                     case 4:
                         gerenciarRelacionamentos();
                         break;
-                    case 5: // --- FASE 4: NOVO MENU ---
+                    case 5:
                         menuUtilitarios();
+                        break;
+                    case 6: // --- FASE 5 ---
+                        menuPesquisaPadroes();
                         break;
                     case 0:
                         System.out.println("Saindo do sistema...");
@@ -81,8 +89,11 @@ public class MainView {
                     default:
                         System.out.println("Opção inválida!");
                 }
+            } catch (NumberFormatException e) {
+                System.out.println("Por favor, digite um número válido.");
             } catch (Exception e) {
                 System.err.println("Ocorreu um erro: " + e.getMessage());
+                e.printStackTrace();
             }
         }
         
@@ -104,11 +115,71 @@ public class MainView {
         System.out.println("3. Gerenciar Itens de Estoque");
         System.out.println("4. Relacionar Fornecedor/Categoria (N:N)");
         System.out.println("5. Utilitários de Segurança e Backup (Fase 4)");
+        System.out.println("6. Pesquisar Padrão em Itens (KMP / BM) (Fase 5)"); // NOVO
         System.out.println("0. Sair");
         System.out.print("Escolha uma opção: ");
     }
 
-    // --- MÉTODOS DA FASE 4 (UTILITÁRIOS) ---
+    // --- MÉTODOS DA FASE 5 (PESQUISA TEXTUAL) ---
+
+    private void menuPesquisaPadroes() {
+        System.out.println("\n--- Pesquisa de Padrões em Itens de Estoque ---");
+        System.out.println("O sistema buscará o texto dentro do NOME dos itens.");
+        System.out.println("1. Usar Algoritmo KMP (Knuth-Morris-Pratt)");
+        System.out.println("2. Usar Algoritmo Boyer-Moore");
+        System.out.println("0. Voltar");
+        System.out.print("Escolha uma opção: ");
+
+        try {
+            int op = Integer.parseInt(scanner.nextLine());
+            if (op == 0) return;
+            
+            if (op != 1 && op != 2) {
+                System.out.println("Opção inválida.");
+                return;
+            }
+
+            System.out.print("Digite o padrão (texto) a ser pesquisado: ");
+            String padrao = scanner.nextLine();
+
+            if (padrao.isEmpty()) {
+                System.out.println("Padrão vazio.");
+                return;
+            }
+
+            System.out.println("Pesquisando por '" + padrao + "' em todos os itens...");
+            long inicio = System.nanoTime();
+
+            // 1. Carrega todos os itens do banco para memória (Simulando busca em campo textual)
+            List<ItemEstoque> todosItens = itemEstoqueDAO.listAll();
+            int encontrados = 0;
+
+            // 2. Itera e aplica o algoritmo escolhido em cada nome
+            for (ItemEstoque item : todosItens) {
+                boolean achou = false;
+                if (op == 1) {
+                    achou = KMP.pesquisar(item.getNome(), padrao);
+                } else {
+                    achou = BoyerMoore.pesquisar(item.getNome(), padrao);
+                }
+
+                if (achou) {
+                    System.out.println("-> ENCONTRADO: " + item);
+                    encontrados++;
+                }
+            }
+
+            long fim = System.nanoTime();
+            System.out.println("------------------------------------------");
+            System.out.println("Total de registros encontrados: " + encontrados);
+            System.out.println("Tempo total de busca: " + (fim - inicio) / 1000 + " microsegundos.");
+
+        } catch (Exception e) {
+            System.err.println("Erro na pesquisa: " + e.getMessage());
+        }
+    }
+
+    // --- MÉTODOS DA FASE 4 (UTILITÁRIOS E BACKUP) ---
 
     private void menuUtilitarios() {
         System.out.println("\n--- Utilitários de Segurança e Backup ---");
@@ -171,15 +242,19 @@ public class MainView {
         int opcao = -1;
         while (opcao != 0) {
             exibirMenuCategorias();
-            opcao = Integer.parseInt(scanner.nextLine());
-            switch (opcao) {
-                case 1: criarCategoria(); break;
-                case 2: buscarCategoria(); break;
-                case 3: atualizarCategoria(); break;
-                case 4: deletarCategoria(); break;
-                case 5: listarTodasCategorias(); break; // NOVO
-                case 0: System.out.println("Retornando ao menu principal..."); break;
-                default: System.out.println("Opção inválida!");
+            try {
+                opcao = Integer.parseInt(scanner.nextLine());
+                switch (opcao) {
+                    case 1: criarCategoria(); break;
+                    case 2: buscarCategoria(); break;
+                    case 3: atualizarCategoria(); break;
+                    case 4: deletarCategoria(); break;
+                    case 5: listarTodasCategorias(); break;
+                    case 0: System.out.println("Retornando ao menu principal..."); break;
+                    default: System.out.println("Opção inválida!");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Digite um número válido.");
             }
         }
     }
@@ -190,7 +265,7 @@ public class MainView {
         System.out.println("2. Buscar Categoria por ID");
         System.out.println("3. Atualizar Categoria");
         System.out.println("4. Deletar Categoria");
-        System.out.println("5. Listar Todas as Categorias"); // NOVO
+        System.out.println("5. Listar Todas as Categorias");
         System.out.println("0. Voltar");
         System.out.print("Escolha uma opção: ");
     }
@@ -267,15 +342,19 @@ public class MainView {
         int opcao = -1;
         while (opcao != 0) {
             exibirMenuFornecedores();
-            opcao = Integer.parseInt(scanner.nextLine());
-            switch (opcao) {
-                case 1: criarFornecedor(); break;
-                case 2: buscarFornecedor(); break;
-                case 3: atualizarFornecedor(); break;
-                case 4: deletarFornecedor(); break;
-                case 5: listarTodosFornecedores(); break; // NOVO
-                case 0: System.out.println("Retornando ao menu principal..."); break;
-                default: System.out.println("Opção inválida!");
+            try {
+                opcao = Integer.parseInt(scanner.nextLine());
+                switch (opcao) {
+                    case 1: criarFornecedor(); break;
+                    case 2: buscarFornecedor(); break;
+                    case 3: atualizarFornecedor(); break;
+                    case 4: deletarFornecedor(); break;
+                    case 5: listarTodosFornecedores(); break;
+                    case 0: System.out.println("Retornando ao menu principal..."); break;
+                    default: System.out.println("Opção inválida!");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Digite um número válido.");
             }
         }
     }
@@ -286,7 +365,7 @@ public class MainView {
         System.out.println("2. Buscar Fornecedor por ID");
         System.out.println("3. Atualizar Fornecedor");
         System.out.println("4. Deletar Fornecedor");
-        System.out.println("5. Listar Todos os Fornecedores"); // NOVO
+        System.out.println("5. Listar Todos os Fornecedores");
         System.out.println("0. Voltar");
         System.out.print("Escolha uma opção: ");
     }
@@ -393,16 +472,20 @@ public class MainView {
         int opcao = -1;
         while (opcao != 0) {
             exibirMenuItensEstoque();
-            opcao = Integer.parseInt(scanner.nextLine());
-            switch (opcao) {
-                case 1: criarItemEstoque(); break;
-                case 2: buscarItemEstoque(); break;
-                case 3: atualizarItemEstoque(); break;
-                case 4: deletarItemEstoque(); break;
-                case 5: listarItensPorCategoria(); break;
-                case 6: listarTodosItens(); break; // NOVO
-                case 0: System.out.println("Retornando ao menu principal..."); break;
-                default: System.out.println("Opção inválida!");
+            try {
+                opcao = Integer.parseInt(scanner.nextLine());
+                switch (opcao) {
+                    case 1: criarItemEstoque(); break;
+                    case 2: buscarItemEstoque(); break;
+                    case 3: atualizarItemEstoque(); break;
+                    case 4: deletarItemEstoque(); break;
+                    case 5: listarItensPorCategoria(); break;
+                    case 6: listarTodosItens(); break;
+                    case 0: System.out.println("Retornando ao menu principal..."); break;
+                    default: System.out.println("Opção inválida!");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Digite um número válido.");
             }
         }
     }
@@ -414,7 +497,7 @@ public class MainView {
         System.out.println("3. Atualizar Item");
         System.out.println("4. Deletar Item");
         System.out.println("5. Listar Itens por Categoria (B+ Tree)");
-        System.out.println("6. Listar Todos os Itens"); // NOVO
+        System.out.println("6. Listar Todos os Itens");
         System.out.println("0. Voltar");
         System.out.print("Escolha uma opção: ");
     }
@@ -543,14 +626,18 @@ public class MainView {
         int opcao = -1;
         while (opcao != 0) {
             exibirMenuRelacionamentos();
-            opcao = Integer.parseInt(scanner.nextLine());
-            switch (opcao) {
-                case 1: vincularFornecedorCategoria(); break;
-                case 2: desvincularFornecedorCategoria(); break;
-                case 3: listarCategoriasPorFornecedor(); break;
-                case 4: listarFornecedoresPorCategoria(); break;
-                case 0: System.out.println("Retornando ao menu principal..."); break;
-                default: System.out.println("Opção inválida!");
+            try {
+                opcao = Integer.parseInt(scanner.nextLine());
+                switch (opcao) {
+                    case 1: vincularFornecedorCategoria(); break;
+                    case 2: desvincularFornecedorCategoria(); break;
+                    case 3: listarCategoriasPorFornecedor(); break;
+                    case 4: listarFornecedoresPorCategoria(); break;
+                    case 0: System.out.println("Retornando ao menu principal..."); break;
+                    default: System.out.println("Opção inválida!");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Digite um número válido.");
             }
         }
     }
