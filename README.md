@@ -27,7 +27,8 @@ Este projeto consiste no desenvolvimento de um sistema de banco de dados em baix
 
   * ✅ **Criptografia RSA:** O campo sensível `CNPJ` é criptografado antes de ser gravado no disco e descriptografado apenas na leitura. As chaves (Pública/Privada) são gerenciadas automaticamente.
 
-[Image of RSA encryption process diagram]
+![licensed-image](https://github.com/user-attachments/assets/0c7669ab-387e-4167-b3b2-f6e02e73c1b7)
+
 
   * ✅ **Backup Compactado:** Sistema capaz de realizar backup completo de todos os bancos de dados e chaves.
   * ✅ **Compressão:** Implementação dos algoritmos **Huffman** e **LZW** para reduzir o tamanho dos backups.
