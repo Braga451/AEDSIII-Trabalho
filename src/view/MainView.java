@@ -1,5 +1,6 @@
 package view;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,15 @@ public class MainView {
 
     public MainView() {
         try {
+            File folder = new File("data");
+            if (!folder.exists()) {
+                folder.mkdirs(); // Cria a pasta 'data' se não existir
+            }
+            File folderChaves = new File("data/chaves");
+            if (!folderChaves.exists()) {
+                folderChaves.mkdirs(); // Garante a pasta de chaves também
+            }
+
             this.categoriaDAO = new CategoriaDAO();
             this.fornecedorDAO = new FornecedorDAO();
             this.itemEstoqueDAO = new ItemEstoqueDAO();
@@ -93,12 +103,12 @@ public class MainView {
         System.out.println("2. Gerenciar Fornecedores (RSA Ativo)");
         System.out.println("3. Gerenciar Itens de Estoque");
         System.out.println("4. Relacionar Fornecedor/Categoria (N:N)");
-        System.out.println("5. Utilitários de Segurança e Backup (Fase 4)"); // NOVO
+        System.out.println("5. Utilitários de Segurança e Backup (Fase 4)");
         System.out.println("0. Sair");
         System.out.print("Escolha uma opção: ");
     }
 
-    // --- MÉTODOS NOVOS DA FASE 4 (IMPLEMENTADOS AQUI) ---
+    // --- MÉTODOS DA FASE 4 (UTILITÁRIOS) ---
 
     private void menuUtilitarios() {
         System.out.println("\n--- Utilitários de Segurança e Backup ---");
@@ -167,6 +177,7 @@ public class MainView {
                 case 2: buscarCategoria(); break;
                 case 3: atualizarCategoria(); break;
                 case 4: deletarCategoria(); break;
+                case 5: listarTodasCategorias(); break; // NOVO
                 case 0: System.out.println("Retornando ao menu principal..."); break;
                 default: System.out.println("Opção inválida!");
             }
@@ -179,8 +190,21 @@ public class MainView {
         System.out.println("2. Buscar Categoria por ID");
         System.out.println("3. Atualizar Categoria");
         System.out.println("4. Deletar Categoria");
+        System.out.println("5. Listar Todas as Categorias"); // NOVO
         System.out.println("0. Voltar");
         System.out.print("Escolha uma opção: ");
+    }
+
+    private void listarTodasCategorias() throws IOException {
+        List<Categoria> lista = categoriaDAO.listAll();
+        if (lista.isEmpty()) {
+            System.out.println("Nenhuma categoria cadastrada.");
+        } else {
+            System.out.println("\n--- LISTA DE CATEGORIAS ---");
+            for (Categoria c : lista) {
+                System.out.println(c);
+            }
+        }
     }
 
     private void criarCategoria() throws IOException {
@@ -249,6 +273,7 @@ public class MainView {
                 case 2: buscarFornecedor(); break;
                 case 3: atualizarFornecedor(); break;
                 case 4: deletarFornecedor(); break;
+                case 5: listarTodosFornecedores(); break; // NOVO
                 case 0: System.out.println("Retornando ao menu principal..."); break;
                 default: System.out.println("Opção inválida!");
             }
@@ -261,8 +286,21 @@ public class MainView {
         System.out.println("2. Buscar Fornecedor por ID");
         System.out.println("3. Atualizar Fornecedor");
         System.out.println("4. Deletar Fornecedor");
+        System.out.println("5. Listar Todos os Fornecedores"); // NOVO
         System.out.println("0. Voltar");
         System.out.print("Escolha uma opção: ");
+    }
+
+    private void listarTodosFornecedores() throws IOException {
+        List<Fornecedor> lista = fornecedorDAO.listAll();
+        if (lista.isEmpty()) {
+            System.out.println("Nenhum fornecedor cadastrado.");
+        } else {
+            System.out.println("\n--- LISTA DE FORNECEDORES ---");
+            for (Fornecedor f : lista) {
+                System.out.println(f);
+            }
+        }
     }
 
     private void criarFornecedor() throws IOException {
@@ -362,6 +400,7 @@ public class MainView {
                 case 3: atualizarItemEstoque(); break;
                 case 4: deletarItemEstoque(); break;
                 case 5: listarItensPorCategoria(); break;
+                case 6: listarTodosItens(); break; // NOVO
                 case 0: System.out.println("Retornando ao menu principal..."); break;
                 default: System.out.println("Opção inválida!");
             }
@@ -374,9 +413,22 @@ public class MainView {
         System.out.println("2. Buscar Item por ID");
         System.out.println("3. Atualizar Item");
         System.out.println("4. Deletar Item");
-        System.out.println("5. Listar Itens por Categoria");
+        System.out.println("5. Listar Itens por Categoria (B+ Tree)");
+        System.out.println("6. Listar Todos os Itens"); // NOVO
         System.out.println("0. Voltar");
         System.out.print("Escolha uma opção: ");
+    }
+
+    private void listarTodosItens() throws IOException {
+        List<ItemEstoque> lista = itemEstoqueDAO.listAll();
+        if (lista.isEmpty()) {
+            System.out.println("Nenhum item cadastrado.");
+        } else {
+            System.out.println("\n--- LISTA DE ITENS ---");
+            for (ItemEstoque i : lista) {
+                System.out.println(i);
+            }
+        }
     }
 
     private void criarItemEstoque() throws IOException {

@@ -103,51 +103,77 @@ public class FornecedorDAO {
     }
 
     public boolean update(Fornecedor fornecedor) throws IOException {
-        Fornecedor fornecedorAntigo = read(fornecedor.getId()); // O read já traz descriptografado
+        Fornecedor fornecedorAntigo = read(fornecedor.getId());
         if (fornecedorAntigo == null) return false;
         
-        // A busca sequencial para update
-        raf.seek(HEADER_SIZE);
-        while (raf.getFilePointer() < raf.length()) {
-            long currentPos = raf.getFilePointer();
-            byte lapide = raf.readByte();
-            int recordSize = raf.readInt();
-            byte[] recordBytes = new byte[recordSize];
-            raf.read(recordBytes);
-
-            if (lapide == ' ') {
-                Fornecedor temp = new Fornecedor();
-                temp.fromByteArray(recordBytes);
+        // 1. Criptografia (igual antes)
+        String cnpjOriginal = fornecedor.getCnpj();
+        try {
+            String cnpjCifrado = rsa.criptografar(cnpjOriginal);
+            fornecedor.setCnpj(cnpjCifrado);
+            
+            byte[] newRecordBytes = fornecedor.toByteArray();
+            
+            // Busca sequencial para achar o antigo
+            raf.seek(HEADER_SIZE);
+            while (raf.getFilePointer() < raf.length()) {
+                long currentPos = raf.getFilePointer();
+                byte lapide = raf.readByte();
+                int recordSize = raf.readInt();
                 
-                if (temp.getId() == fornecedor.getId()) {
-                    // --- INÍCIO DA CRIPTOGRAFIA NO UPDATE ---
-                    String cnpjOriginal = fornecedor.getCnpj();
-                    try {
-                        // Criptografa para salvar
-                        String cnpjCifrado = rsa.criptografar(cnpjOriginal);
-                        fornecedor.setCnpj(cnpjCifrado);
+                if (lapide == ' ') {
+                    // Pula os dados para verificar ID ou ler se necessário
+                    // Melhor ler para confirmar ID
+                    byte[] recordBytes = new byte[recordSize];
+                    raf.read(recordBytes);
+                    Fornecedor temp = new Fornecedor();
+                    temp.fromByteArray(recordBytes);
+
+                    if (temp.getId() == fornecedor.getId()) {
                         
-                        byte[] newRecordBytes = fornecedor.toByteArray();
-                        
+                        // CENÁRIO A: Cabe no mesmo lugar
                         if (newRecordBytes.length <= recordSize) {
-                            raf.seek(currentPos + 1 + 4);
+                            raf.seek(currentPos + 1 + 4); // Pula lápide e tamanho
                             raf.write(newRecordBytes);
-                        } else {
-                            delete(fornecedor.getId());
-                            create(fornecedor); // O create já trata a criptografia
+                            return true;
+                        } 
+                        // CENÁRIO B: Não cabe (Correção do BUG aqui!)
+                        else {
+                            // 1. Marca o antigo como deletado
+                            raf.seek(currentPos);
+                            raf.writeByte('*');
+                            
+                            // 2. Vai para o final do arquivo
+                            raf.seek(raf.length());
+                            long novoEndereco = raf.getFilePointer();
+                            
+                            // 3. Escreve o registro NOVO com o ID ANTIGO
+                            raf.writeByte(' ');
+                            raf.writeInt(newRecordBytes.length);
+                            raf.write(newRecordBytes);
+                            
+                            // 4. Atualiza o índice para apontar para o novo endereço
+                            // O HashExtensivel.update(id, novoEndereco) deve resolver
+                            // Se o seu Hash não tem update, usamos:
+                            // indice.delete(fornecedor.getId());
+                            // indice.create(fornecedor.getId(), novoEndereco);
+                            
+                            // Assumindo que seu HashExtensivel tem um método update que aceita (id, endereço)
+                            // Se não tiver, use a lógica de delete + create COM O MESMO ID:
+                            indice.update(fornecedor.getId(), novoEndereco); 
+                            
+                            return true;
                         }
-                        return true;
-                        
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        return false;
-                    } finally {
-                        // Restaura o original
-                        fornecedor.setCnpj(cnpjOriginal);
                     }
-                    // --- FIM ---
+                } else {
+                    raf.skipBytes(recordSize); // Pula registro deletado
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            fornecedor.setCnpj(cnpjOriginal);
         }
         return false;
     }

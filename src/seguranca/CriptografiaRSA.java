@@ -16,14 +16,19 @@ import javax.crypto.Cipher;
 public class CriptografiaRSA {
 
     private static final String ALGORITHM = "RSA";
-    private static final String PATH_CHAVE_PUBLICA = "data/chaves/public.key";
-    private static final String PATH_CHAVE_PRIVADA = "data/chaves/private.key";
+    private static final String DIR_CHAVES = "data/chaves";
+    private static final String PATH_CHAVE_PUBLICA = DIR_CHAVES + "/public.key";
+    private static final String PATH_CHAVE_PRIVADA = DIR_CHAVES + "/private.key";
 
     public CriptografiaRSA() {
         try {
-            File diretorio = new File("data/chaves");
+            File diretorio = new File(DIR_CHAVES);
             if (!diretorio.exists()) {
                 diretorio.mkdirs();
+            }
+            // Se as chaves não existem, gera agora!
+            if (!new File(PATH_CHAVE_PUBLICA).exists() || !new File(PATH_CHAVE_PRIVADA).exists()) {
+                System.out.println("Chaves RSA não encontradas. Gerando novo par...");
                 gerarParDeChaves();
             }
         } catch (Exception e) {
@@ -33,22 +38,26 @@ public class CriptografiaRSA {
 
     public void gerarParDeChaves() throws Exception {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
-        keyGen.initialize(2048); // Tamanho da chave: 2048 bits (seguro)
+        keyGen.initialize(2048);
         KeyPair pair = keyGen.generateKeyPair();
 
-        // Salva Chave Pública
+        // Garante que o diretório existe antes de salvar
+        new File(DIR_CHAVES).mkdirs();
+
         try (FileOutputStream fos = new FileOutputStream(PATH_CHAVE_PUBLICA)) {
             fos.write(pair.getPublic().getEncoded());
         }
 
-        // Salva Chave Privada
         try (FileOutputStream fos = new FileOutputStream(PATH_CHAVE_PRIVADA)) {
             fos.write(pair.getPrivate().getEncoded());
         }
-        System.out.println("Novas chaves RSA geradas em data/chaves/");
     }
 
     public PublicKey carregarChavePublica() throws Exception {
+        // Dupla verificação: se o arquivo sumiu, gera de novo antes de ler
+        if (!new File(PATH_CHAVE_PUBLICA).exists()) {
+            gerarParDeChaves();
+        }
         byte[] keyBytes = Files.readAllBytes(new File(PATH_CHAVE_PUBLICA).toPath());
         X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
         KeyFactory kf = KeyFactory.getInstance(ALGORITHM);
@@ -56,13 +65,16 @@ public class CriptografiaRSA {
     }
 
     public PrivateKey carregarChavePrivada() throws Exception {
+        // Dupla verificação
+        if (!new File(PATH_CHAVE_PRIVADA).exists()) {
+            gerarParDeChaves();
+        }
         byte[] keyBytes = Files.readAllBytes(new File(PATH_CHAVE_PRIVADA).toPath());
         PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
         KeyFactory kf = KeyFactory.getInstance(ALGORITHM);
         return kf.generatePrivate(spec);
     }
 
-    // Criptografa e retorna em Base64 para facilitar o armazenamento como String
     public String criptografar(String textoClaro) throws Exception {
         PublicKey publicKey = carregarChavePublica();
         Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -71,7 +83,6 @@ public class CriptografiaRSA {
         return Base64.getEncoder().encodeToString(encryptedBytes);
     }
 
-    // Recebe Base64, descriptografa e retorna String
     public String descriptografar(String textoCriptografadoBase64) throws Exception {
         PrivateKey privateKey = carregarChavePrivada();
         Cipher cipher = Cipher.getInstance(ALGORITHM);
